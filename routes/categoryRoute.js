@@ -1,21 +1,20 @@
 const express = require("express");
+const { verifyToken, authorizeRoles } = require("../middleware/authMiddleware");
 const {
-  isAuthenticatedUser,
-  authorizeRoles,
-} = require("../middleware/authMiddleware");
-const { addCategory, getAllCategories, deleteCategory } = require("../controllers/categoryController");
+  addCategory,
+  getAllCategories,
+  deleteCategory,
+} = require("../controllers/categoryController");
 
 const router = express.Router();
 
 router
   .route("/admin/category/new")
-  .post(isAuthenticatedUser, authorizeRoles("admin"), addCategory);
-
+  .post(verifyToken, authorizeRoles("admin"), addCategory);
 router.route("/admin/all-categories").get(getAllCategories);
 router
   .route("/admin/delete-category/:id")
-  .delete(isAuthenticatedUser, authorizeRoles("admin"), deleteCategory);
-
+  .delete(verifyToken, authorizeRoles("admin"), deleteCategory);
 router
   .route("/all-categories")
   .get(getAllCategories);

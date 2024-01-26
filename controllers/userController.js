@@ -1,31 +1,47 @@
 const User = require("../models/userModel");
 const ErrorHandler = require("../utils/errorhandler");
 const catchAsyncErrors = require("../middleware/catchAsyncErrors");
-const sendJwtTokenToCookie = require("../utils/sendJwtTokenTocookie");
 const cloudinary = require("cloudinary");
+const jwt = require("jsonwebtoken");
+
 // user register controller
 exports.registerUser = catchAsyncErrors(async (req, res, next) => {
   const { name, email, password } = req.body;
 
-  const myCloud = await cloudinary.v2.uploader.upload(req.body.avatar, {
-    folder: "images",
-    width: 150,
-    crop: "scale",
-  });
+  const user = User.findOne({ email });
 
-  const user = await User.create({
+  if (user) {
+    return next(new ErrorHandler("Email already is in use!", 401));
+  }
+
+  if (req.body.avatar) {
+    const myCloud = await cloudinary.v2.uploader.upload(req.body.avatar, {
+      folder: "images",
+      width: 150,
+      crop: "scale",
+    });
+    user = await User.create({
+      name,
+      email,
+      password,
+      avatar: {
+        public_id: myCloud.public_id,
+        url: myCloud.secure_url,
+      },
+    });
+  }
+
+  user = await User.create({
     name,
     email,
     password,
-    avatar: {
-      public_id: myCloud.public_id,
-      url: myCloud.secure_url,
-    },
   });
 
-  sendJwtTokenToCookie(user, 201, res);
+  res.status(201).json({
+    success: true,
+    user,
+  });
 });
-
 // user login controller
 exports.loginUser = catchAsyncErrors(async (req, res, next) => {
   const { email, password } = req.body;
@@ -47,22 +63,67 @@ exports.loginUser = catchAsyncErrors(async (req, res, next) => {
     return next(new ErrorHandler("Invalid credentials", 401));
   }
 
-  sendJwtTokenToCookie(user, 200, res);
-});
+  const accessToken = user.getAccessToken();
+  const refeshToken = user.getRefreshToken();
 
+  res
+    .status(200)
+    .cookie("accessToken", accessToken, {
+      maxAge: 24 * 60 * 60 * 1000,
+      httpOnly: true,
+      secure: true,
+      sameSite: "Lax",
+    })
+    .cookie("refreshToken", refeshToken, {
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+      httpOnly: true,
+      secure: true,
+      sameSite: "Lax",
+    })
+    .json({
+      success: true,
+      message: "Logged in successfully",
+    });
+});
 // user logout controller
 exports.logoutUser = catchAsyncErrors(async (req, res, next) => {
-  res.cookie("token", null, {
-    expires: new Date(Date.now()),
-    httpOnly: true,
-  });
+  res.clearCookie("accessToken", { httpOnly: true });
+  res.clearCookie("refreshToken", { httpOnly: true });
 
   res.status(200).json({
     success: true,
     message: "Logged out",
   });
 });
-
+// generating new access token
+exports.refreshAccessToken = catchAsyncErrors(async (req, res, next) => {
+  const token = req.cookies.refreshToken;
+  if (!token) {
+    return next(new ErrorHandler("Invalid token", 403));
+  }
+  jwt.verify(
+    token,
+    process.env.REFRESH_TOKEN_SECRET,
+    catchAsyncErrors(async (err, decoded) => {
+      if (err) return next(new ErrorHandler("Forbidden", 403));
+      const user = await User.findById(decoded.id);
+      const accessToken = user.getAccessToken();
+      console.log(token, accessToken);
+      res
+        .status(200)
+        .cookie("accessToken", accessToken, {
+          maxAge: 24 * 60 * 60 * 1000,
+          httpOnly: true,
+          secure: true,
+          // sameSite: "Strict",
+        })
+        .json({
+          success: true,
+          message: "Access token refresh successfully",
+        });
+    })
+  );
+});
 // get current user controller
 exports.getUserDetails = catchAsyncErrors(async (req, res, next) => {
   const user = await User.findById(req.user.id);

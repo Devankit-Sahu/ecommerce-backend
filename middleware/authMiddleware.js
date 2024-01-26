@@ -3,22 +3,22 @@ const catchAsyncErrors = require("./catchAsyncErrors");
 const User = require("../models/userModel");
 const jwt = require("jsonwebtoken");
 
-exports.isAuthenticatedUser = catchAsyncErrors(async (req, res, next) => {
-  const { token } = req.cookies;
-
+exports.verifyToken = catchAsyncErrors(async (req, res, next) => {
+  const token = req.cookies.accessToken;
   if (!token) {
-    return next(
-      new ErrorHandler("Please login first to access this resource", 401)
-    );
+    return next(new ErrorHandler("Please login to access this resource", 401));
   }
-
-  const decodedData = jwt.verify(token, process.env.JWT_SECRET);
-
-  req.user = await User.findById(decodedData.id);
-  next();
+  jwt.verify(
+    token,
+    process.env.ACCESS_TOKEN_SECRET,
+    catchAsyncErrors(async (err, decoded) => {
+      if (err) return next(new ErrorHandler("Unauthorized Access", 401));
+      const user = await User.findById(decoded.id);
+      req.user = user;
+      next();
+    })
+  );
 });
-
-
 
 exports.authorizeRoles = (...roles) => {
   return (req, res, next) => {

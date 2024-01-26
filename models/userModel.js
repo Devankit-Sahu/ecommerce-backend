@@ -28,18 +28,12 @@ const userSchema = new mongoose.Schema({
     select: false,
   },
   avatar: {
-    public_id: {
-      type: String,
-      required: true,
-    },
-    url: {
-      type: String,
-      required: true,
-    },
+    public_id: String,
+    url: String,
   },
   role: {
     type: String,
-    enum:["user","admin"],
+    enum: ["user", "admin"],
     default: "user",
   },
   createdAt: {
@@ -47,9 +41,6 @@ const userSchema = new mongoose.Schema({
     default: Date.now(),
   },
 });
-
-// resetPasswordtoken:String,
-// resetPasswordExpires: Date
 
 userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) {
@@ -62,9 +53,15 @@ userSchema.methods.matchPassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };
 
-userSchema.methods.getJwtToken = function () {
-  return jwtToken.sign({ id: this._id }, process.env.JWT_SECRET, {
-    expiresIn: "5d",
+userSchema.methods.getAccessToken = function () {
+  return jwtToken.sign({ id: this._id }, process.env.ACCESS_TOKEN_SECRET, {
+    expiresIn: process.env.ACCESS_TOKEN_EXPIRE,
+  });
+};
+
+userSchema.methods.getRefreshToken = function () {
+  return jwtToken.sign({ id: this._id }, process.env.REFRESH_TOKEN_SECRET, {
+    expiresIn: process.env.REFRESH_TOKEN_EXPIRE,
   });
 };
 

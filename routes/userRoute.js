@@ -9,33 +9,27 @@ const {
   deleteUser,
   getUserDetailsByAdmin,
   getAllUsersByAdmin,
+  refreshAccessToken,
 } = require("../controllers/userController");
-const {
-  isAuthenticatedUser,
-  authorizeRoles,
-} = require("../middleware/authMiddleware");
+const { verifyToken, authorizeRoles } = require("../middleware/authMiddleware");
 
 const router = express.Router();
 
 router.route("/register").post(registerUser);
-
 router.route("/login").post(loginUser);
-
 router.route("/logout").get(logoutUser);
-
 // Admin route
 router
   .route("/admin/users")
-  .get(isAuthenticatedUser, authorizeRoles("admin"), getAllUsersByAdmin);
-
+  .get(verifyToken, authorizeRoles("admin"), getAllUsersByAdmin);
 // Admin route
 router
   .route("/admin/user/:id")
-  .get(isAuthenticatedUser, authorizeRoles("admin"), getUserDetailsByAdmin);
-
+  .get(verifyToken, authorizeRoles("admin"), getUserDetailsByAdmin);
 // Normal user
-router.route("/me").get(isAuthenticatedUser, getUserDetails);
-
-router.route("/me/update").put(isAuthenticatedUser, updateUserDetails);
+router.route("/me").get(verifyToken, getUserDetails);
+router.route("/me/update").put(verifyToken, updateUserDetails);
+// refreshaccesstoken route
+router.route("/refresh").post(refreshAccessToken);
 
 module.exports = router;
