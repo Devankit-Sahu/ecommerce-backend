@@ -7,12 +7,16 @@ class Features {
   search() {
     const key = this.queryStr.key;
     if (key && key !== "") {
-      const keywords = key.split("").filter((keyword) => keyword.trim() !== "");
+      const keywords = key
+        .split(" ")
+        .filter((keyword) => keyword.trim() !== "");
+      const maxPrice = keywords.filter((price) => !isNaN(Number(price)));
       const keywordRegex = keywords.map((keyword) => new RegExp(keyword, "i"));
       this.query = this.query.find({
-        $or: [
+        $and: [
           { name: { $in: keywordRegex } },
           { category: { $in: keywordRegex } },
+          { price: { $gte: 0, $lte: Math.max(...maxPrice.map(Number)) } },
         ],
       });
     } else {
@@ -28,6 +32,7 @@ class Features {
     let queryStr = JSON.stringify(qureycopy);
     queryStr = queryStr.replace(/\b(gt|gte|lt|lte)\b/g, (i) => `$${i}`);
     this.query = this.query.find(JSON.parse(queryStr));
+    // if category exists
     if (JSON.parse(queryStr).category) {
       const categoryArray = JSON.parse(queryStr).category.split(",");
       this.query = this.query.find({
@@ -38,12 +43,9 @@ class Features {
   }
 
   pagination(productPerPage) {
-    const currPage = Number(this.queryStr.page) || 1;
-
-    const skipPages = productPerPage * (currPage - 1);
-
+    const currentPage = Number(this.queryStr.page) || 1;
+    const skipPages = productPerPage * (currentPage - 1);
     this.query = this.query.limit(productPerPage).skip(skipPages);
-
     return this;
   }
 }

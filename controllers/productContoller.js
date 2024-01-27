@@ -31,29 +31,31 @@ exports.createProduct = catchAsyncErrors(async (req, res, next) => {
   });
 });
 
+// getting all products by normal users
 exports.getAllProducts = catchAsyncErrors(async (req, res, next) => {
-  const productPerPage = 3;
-  const productCount = await Product.countDocuments();
-  let features = new Features(Product.find(), req.query).search().filter();
-  let products = await features.query;
-  const filteredProductsCount = products.length;
-  features = new Features(Product.find(), req.query)
-    .search()
-    .filter()
-    .pagination(productPerPage);
-  products = await features.query;
-  const totalPage =
-    filteredProductsCount % productPerPage == 0
-      ? parseInt(filteredProductsCount / productPerPage)
-      : parseInt(filteredProductsCount / productPerPage) + 1;
-  res.status(200).json({
-    success: true,
-    products,
-    productCount,
-    productPerPage,
-    totalPage,
-    filteredProductsCount,
-  });
+  if (req.query && Object.keys(req.query).length > 0) {
+    const productPerPage = 10;
+    let features = new Features(Product, req.query);
+    features = features.search().filter().pagination(productPerPage);
+    const filteredProducts = await features.query;
+    const filteredProductsCount = await Product.countDocuments(
+      features.query._conditions
+    );
+    const totalPages = Math.ceil(filteredProductsCount / productPerPage);
+    res.status(200).json({
+      success: true,
+      filteredProducts,
+      productPerPage,
+      filteredProductsCount,
+      totalPages,
+    });
+  } else {
+    const products = await Product.find();
+    res.status(200).json({
+      success: true,
+      products,
+    });
+  }
 });
 
 // getting all products by admin
