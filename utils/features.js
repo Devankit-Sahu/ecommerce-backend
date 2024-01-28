@@ -12,13 +12,22 @@ class Features {
         .filter((keyword) => keyword.trim() !== "");
       const maxPrice = keywords.filter((price) => !isNaN(Number(price)));
       const keywordRegex = keywords.map((keyword) => new RegExp(keyword, "i"));
-      this.query = this.query.find({
-        $and: [
-          { name: { $in: keywordRegex } },
-          { category: { $in: keywordRegex } },
-          { price: { $gte: 0, $lte: Math.max(...maxPrice.map(Number)) } },
-        ],
-      });
+      if (maxPrice.length > 0) {
+        this.query = this.query.find({
+          $and: [
+            { name: { $in: keywordRegex } },
+            { category: { $in: keywordRegex } },
+          ],
+          price: { $gte: 0, $lte: Math.max(...maxPrice.map(Number)) },
+        });
+      } else {
+        this.query = this.query.find({
+          $or: [
+            { name: { $in: keywordRegex } },
+            { category: { $in: keywordRegex } },
+          ],
+        });
+      }
     } else {
       this.query = this.query.find();
     }

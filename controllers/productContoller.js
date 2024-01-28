@@ -34,7 +34,7 @@ exports.createProduct = catchAsyncErrors(async (req, res, next) => {
 // getting all products by normal users
 exports.getAllProducts = catchAsyncErrors(async (req, res, next) => {
   if (req.query && Object.keys(req.query).length > 0) {
-    const productPerPage = 10;
+    const productPerPage = 5;
     let features = new Features(Product, req.query);
     features = features.search().filter().pagination(productPerPage);
     const filteredProducts = await features.query;
