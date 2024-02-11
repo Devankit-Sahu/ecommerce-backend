@@ -2,45 +2,52 @@ const mongoose = require("mongoose");
 const bcrypt = require("bcrypt");
 const validator = require("validator");
 const jwtToken = require("jsonwebtoken");
-const crypto = require("crypto");
 
 // creating user schema
-const userSchema = new mongoose.Schema({
-  name: {
-    type: String,
-    required: [true, "Please provide a name"],
-    trim: true,
-    minlength: [5, "Name must be at least 5 characters"],
-    maxlength: [50, "Name must be less than 50 characters"],
+const userSchema = new mongoose.Schema(
+  {
+    name: {
+      type: String,
+      required: [true, "Please provide a name"],
+      trim: true,
+      minlength: [5, "Name must be at least 5 characters"],
+      maxlength: [50, "Name must be less than 50 characters"],
+    },
+    email: {
+      type: String,
+      required: [true, "Please provide an email"],
+      unique: true,
+      validate: [validator.isEmail, "Please provide an email"],
+      trim: true,
+      minlength: [7, "Email must be at least 7 characters"],
+    },
+    password: {
+      type: String,
+      required: [true, "Please provide a password"],
+      minlength: [8, "Password must be at least 8 characters"],
+      select: false,
+    },
+    avatar: {
+      public_id: String,
+      url: String,
+    },
+    role: {
+      type: String,
+      enum: ["user", "admin"],
+      default: "user",
+    },
+    phoneNumber: {
+      type: Number,
+      validate: {
+        validator: function (v) {
+          return /^\d{10,}$/.test(v); // Test if phone number has 10 or more digits
+        },
+        message: "Phone number must be at least 10 digits long",
+      },
+    },
   },
-  email: {
-    type: String,
-    required: [true, "Please provide an email"],
-    unique: true,
-    validate: [validator.isEmail, "Please provide an email"],
-    trim: true,
-    minlength: [7, "Email must be at least 7 characters"],
-  },
-  password: {
-    type: String,
-    required: [true, "Please provide a password"],
-    minlength: [8, "Password must be at least 8 characters"],
-    select: false,
-  },
-  avatar: {
-    public_id: String,
-    url: String,
-  },
-  role: {
-    type: String,
-    enum: ["user", "admin"],
-    default: "user",
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now(),
-  },
-});
+  { timestamps: true }
+);
 
 userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) {

@@ -3,43 +3,42 @@ const ErrorHandler = require("../utils/errorhandler");
 const catchAsyncErrors = require("../middleware/catchAsyncErrors");
 const cloudinary = require("cloudinary");
 const jwt = require("jsonwebtoken");
+const uploadOnCloudinary = require("../utils/uploadOnCloudinary");
 
 // user register controller
 exports.registerUser = catchAsyncErrors(async (req, res, next) => {
-  const { name, email, password } = req.body;
+  const { name, email, password, phoneNumber, avatar } = req.body;
 
-  const user = User.findOne({ email });
+  if (!name || !email || !password)
+    return next(new ErrorHandler("Please enter name, email and password", 401));
 
-  if (user) {
+  const isUserExist = await User.findOne({ email });
+
+  if (isUserExist) {
     return next(new ErrorHandler("Email already is in use!", 401));
   }
 
-  if (req.body.avatar) {
-    const myCloud = await cloudinary.v2.uploader.upload(req.body.avatar, {
-      folder: "images",
-      width: 150,
-      crop: "scale",
-    });
-    user = await User.create({
-      name,
-      email,
-      password,
-      avatar: {
-        public_id: myCloud.public_id,
-        url: myCloud.secure_url,
-      },
-    });
-  }
-
-  user = await User.create({
+  const user = await User.create({
     name,
     email,
     password,
   });
 
+  if (avatar) {
+    const response = await uploadOnCloudinary(avatar);
+    user.avatar.public_id = response.public_id;
+    user.avatar.url = response.secure_url;
+  }
+
+  if (phoneNumber) {
+    user.phoneNumber = phoneNumber;
+  }
+
+  // TODO:email and phone number verification
+
   res.status(201).json({
     success: true,
-    user,
+    message: "Account created successfully",
   });
 });
 // user login controller
@@ -47,38 +46,35 @@ exports.loginUser = catchAsyncErrors(async (req, res, next) => {
   const { email, password } = req.body;
 
   if (!email || !password) {
-    return next(
-      new ErrorHandler("Please provide correct email and password", 400)
-    );
+    return next(new ErrorHandler("Please provide email and password", 400));
   }
-  const user = await User.findOne({ email }).select("+password");
 
-  if (!user) {
+  const isUserExist = await User.findOne({ email }).select("+password");
+
+  if (!isUserExist) {
     return next(new ErrorHandler("User not found", 401));
   }
 
-  const isMatch = await user.matchPassword(password);
+  const isPasswordMatch = await isUserExist.matchPassword(password);
 
-  if (!isMatch) {
+  if (!isPasswordMatch) {
     return next(new ErrorHandler("Invalid credentials", 401));
   }
 
-  const accessToken = user.getAccessToken();
-  const refeshToken = user.getRefreshToken();
+  const accessToken = isUserExist.getAccessToken();
+  const refeshToken = isUserExist.getRefreshToken();
 
   res
     .status(200)
     .cookie("accessToken", accessToken, {
       maxAge: 24 * 60 * 60 * 1000,
       httpOnly: true,
-      secure: true,
-      sameSite: "Lax",
+      // secure: true,
     })
     .cookie("refreshToken", refeshToken, {
       maxAge: 7 * 24 * 60 * 60 * 1000,
       httpOnly: true,
-      secure: true,
-      sameSite: "Lax",
+      // secure: true,
     })
     .json({
       success: true,
@@ -133,7 +129,62 @@ exports.getUserDetails = catchAsyncErrors(async (req, res, next) => {
     user,
   });
 });
+// update user controller
+exports.updateUserDetails = catchAsyncErrors(async (req, res, next) => {
+  const { name, email, avatar, phoneNumber, oldPassword, newPassword } =
+    req.body;
+  const userdata = {};
 
+  let user = await User.findById(req.user.id).select("+password");
+
+  if (!user) {
+    return next(new ErrorHandler("User not found", 401));
+  }
+
+  if (name) {
+    userdata.name = name;
+  }
+
+  if (email) {
+    userdata.email = email;
+  }
+
+  if (phoneNumber) {
+    userdata.phoneNumber = phoneNumber;
+  }
+
+  if (oldPassword && newPassword) {
+    const isPasswordMatch = await user.matchPassword(oldPassword);
+
+    if (!isPasswordMatch) {
+      return next(new ErrorHandler("Invalid credentials", 401));
+    }
+
+    userdata.password = newPassword;
+  }
+  if (avatar) {
+    if (user.avatar && user.avatar.public_id) {
+      const imageId = user.avatar.public_id;
+      await cloudinary.v2.uploader.destroy(imageId);
+    }
+    const response = await uploadOnCloudinary(avatar);
+    userdata.avatar = {
+      public_id: response.public_id,
+      url: response.secure_url,
+    };
+  }
+
+  if (Object.keys(userdata).length > 0) {
+    user = await User.findByIdAndUpdate(user._id, userdata, {
+      new: true,
+    });
+  }
+
+  res.status(200).json({
+    success: true,
+    user,
+  });
+});
 // get all user controller (admin)
 exports.getAllUsersByAdmin = catchAsyncErrors(async (req, res, next) => {
   const users = await User.find();
@@ -143,7 +194,6 @@ exports.getAllUsersByAdmin = catchAsyncErrors(async (req, res, next) => {
     users,
   });
 });
-
 // get users details controller (admin)
 exports.getUserDetailsByAdmin = catchAsyncErrors(async (req, res, next) => {
   const user = await User.findById(req.params.id);
@@ -159,37 +209,6 @@ exports.getUserDetailsByAdmin = catchAsyncErrors(async (req, res, next) => {
     user,
   });
 });
-
-// update user controller
-exports.updateUserDetails = catchAsyncErrors(async (req, res, next) => {
-  const userdata = {
-    name: req.body.name,
-    email: req.body.email,
-  };
-  if (req.body.avatar !== "") {
-    const user = await User.findById(req.user.id);
-    const imageId = user.avatar.public_id;
-    await cloudinary.v2.uploader.destroy(imageId);
-    const myCloud = await cloudinary.v2.uploader.upload(req.body.avatar, {
-      folder: "images",
-      width: 150,
-      crop: "scale",
-    });
-    userdata.avatar = {
-      public_id: myCloud.public_id,
-      url: myCloud.secure_url,
-    };
-  }
-  const user = await User.findByIdAndUpdate(req.user.id, userdata, {
-    new: true,
-  });
-
-  res.status(200).json({
-    success: true,
-    user,
-  });
-});
-
 // delete user controller (admin)
 exports.deleteUserByAdmin = catchAsyncErrors(async (req, res, next) => {
   const user = await User.findById(req.params.id);
