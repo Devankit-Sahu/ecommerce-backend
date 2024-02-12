@@ -7,7 +7,9 @@ const uploadOnCloudinary = require("../utils/uploadOnCloudinary");
 
 // user register controller
 exports.registerUser = catchAsyncErrors(async (req, res, next) => {
-  const { name, email, password, phoneNumber, avatar } = req.body;
+  const { name, email, password, phoneNumber } = req.body;
+
+  const avatar = req.file;
 
   if (!name || !email || !password)
     return next(new ErrorHandler("Please enter name, email and password", 401));
@@ -18,27 +20,26 @@ exports.registerUser = catchAsyncErrors(async (req, res, next) => {
     return next(new ErrorHandler("Email already is in use!", 401));
   }
 
+  let avatarObj = {};
+
+  if (avatar) {
+    const response = await uploadOnCloudinary(avatar.path);
+    avatarObj.public_id = response.public_id;
+    avatarObj.url = response.secure_url;
+  }
+
   const user = await User.create({
     name,
     email,
     password,
+    avatar: avatarObj,
+    phoneNumber,
   });
-
-  if (avatar) {
-    const response = await uploadOnCloudinary(avatar);
-    user.avatar.public_id = response.public_id;
-    user.avatar.url = response.secure_url;
-  }
-
-  if (phoneNumber) {
-    user.phoneNumber = phoneNumber;
-  }
-
-  // TODO:email and phone number verification
 
   res.status(201).json({
     success: true,
     message: "Account created successfully",
+    user,
   });
 });
 // user login controller
@@ -131,14 +132,15 @@ exports.getUserDetails = catchAsyncErrors(async (req, res, next) => {
 });
 // update user controller
 exports.updateUserDetails = catchAsyncErrors(async (req, res, next) => {
-  const { name, email, avatar, phoneNumber, oldPassword, newPassword } =
-    req.body;
+  const { name, email, avatar, phoneNumber } = req.body;
   const userdata = {};
 
   let user = await User.findById(req.user.id).select("+password");
 
   if (!user) {
-    return next(new ErrorHandler("User not found", 401));
+    return next(
+      new ErrorHandler("logged in or signup to use this service", 401)
+    );
   }
 
   if (name) {
@@ -153,20 +155,13 @@ exports.updateUserDetails = catchAsyncErrors(async (req, res, next) => {
     userdata.phoneNumber = phoneNumber;
   }
 
-  if (oldPassword && newPassword) {
-    const isPasswordMatch = await user.matchPassword(oldPassword);
-
-    if (!isPasswordMatch) {
-      return next(new ErrorHandler("Invalid credentials", 401));
-    }
-
-    userdata.password = newPassword;
-  }
   if (avatar) {
+    // if avatar already exists
     if (user.avatar && user.avatar.public_id) {
       const imageId = user.avatar.public_id;
       await cloudinary.v2.uploader.destroy(imageId);
     }
+    // upload avatar on cloudinary
     const response = await uploadOnCloudinary(avatar);
     userdata.avatar = {
       public_id: response.public_id,
@@ -183,6 +178,37 @@ exports.updateUserDetails = catchAsyncErrors(async (req, res, next) => {
   res.status(200).json({
     success: true,
     user,
+  });
+});
+// update password
+exports.updatePassword = catchAsyncErrors(async (req, res, next) => {
+  const { oldPassword, newPassword } = req.body;
+
+  if (!oldPassword || !newPassword)
+    return next(new ErrorHandler("old and new password is required", 400));
+
+  const loggedinuser = await User.findById(req.user.id).select("+password");
+
+  if (!loggedinuser) {
+    return next(
+      new ErrorHandler("logged in or signup to use this service", 400)
+    );
+  }
+
+  const isPasswordMatch = await loggedinuser.matchPassword(oldPassword);
+
+  if (!isPasswordMatch) {
+    return next(
+      new ErrorHandler("old password and new password does not match", 400)
+    );
+  }
+  loggedinuser.password = newPassword;
+
+  await loggedinuser.save({ validateBeforeSave: false });
+
+  res.status(200).json({
+    success: true,
+    message: "password changed successfully",
   });
 });
 // get all user controller (admin)

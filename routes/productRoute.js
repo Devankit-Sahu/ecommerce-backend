@@ -8,6 +8,7 @@ const {
   getAllProductsByAdmin,
 } = require("../controllers/productContoller");
 const { verifyToken, authorizeRoles } = require("../middleware/authMiddleware");
+const upload = require("../middleware/multerMiddleware");
 
 const router = express.Router();
 
@@ -17,10 +18,20 @@ router
   .get(verifyToken, authorizeRoles("admin"), getAllProductsByAdmin);
 router
   .route("/admin/product/new")
-  .post(verifyToken, authorizeRoles("admin"), createProduct);
+  .post(
+    verifyToken,
+    authorizeRoles("admin"),
+    upload.array("images", 8),
+    createProduct
+  );
 router
   .route("/admin/product/:id")
-  .put(verifyToken, authorizeRoles("admin"), updateProduct)
+  .put(
+    verifyToken,
+    authorizeRoles("admin"),
+    upload.array("images", 8),
+    updateProduct
+  )
   .delete(verifyToken, authorizeRoles("admin"), deleteProduct)
   .get(verifyToken, authorizeRoles("admin"), getSingleProduct);
 

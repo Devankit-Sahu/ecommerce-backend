@@ -1,4 +1,5 @@
 const cloudinary = require("cloudinary");
+const fs = require("fs");
 
 const uploadOnCloudinary = async (filePath) => {
   try {
@@ -8,9 +9,11 @@ const uploadOnCloudinary = async (filePath) => {
       resource_type: "auto",
       folder: "e-comm-files",
     });
+    fs.unlinkSync(filePath);
     return response;
   } catch (error) {
     console.error("Error uploading to Cloudinary:", error.message);
+    fs.unlinkSync(filePath);
     throw error;
   }
 };

@@ -3,7 +3,6 @@ const express = require("express");
 const app = express();
 const cookieParser = require("cookie-parser");
 const cors = require("cors");
-const fileUploader = require("express-fileupload");
 
 const productRoute = require("./routes/productRoute");
 const userRoute = require("./routes/userRoute");
@@ -21,7 +20,6 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
-app.use(fileUploader());
 
 app.use("/api/v1", productRoute);
 app.use("/api/v1", categoryRoute);
