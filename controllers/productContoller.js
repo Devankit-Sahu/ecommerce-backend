@@ -3,10 +3,23 @@ const ErrorHandler = require("../utils/errorhandler");
 const catchAsyncErrors = require("../middleware/catchAsyncErrors");
 const Features = require("../utils/features");
 const uploadOnCloudinary = require("../utils/uploadOnCloudinary");
+const ProductReview = require("../models/productReviewModel");
+
 // creating a new product
 exports.createProduct = catchAsyncErrors(async (req, res, next) => {
-  const { name, description, categoryId, price, stock, seller, productType } =
-    req.body;
+  const {
+    name,
+    description,
+    categoryId,
+    price,
+    stock,
+    seller,
+    productType,
+    discountPercent,
+    active,
+    start,
+    end,
+  } = req.body;
   const productImages = req.files;
 
   if (
@@ -35,6 +48,18 @@ exports.createProduct = catchAsyncErrors(async (req, res, next) => {
     });
   }
 
+  let discountObj = {};
+  if (discountPercent) {
+    if (!start || !end)
+      return next(
+        new ErrorHandler("discount start and end date is missing", 400)
+      );
+    discountObj.percent = discountPercent;
+    discountObj.active = active;
+    discountObj.start = start;
+    discountObj.end = end;
+  }
+
   const product = await Product.create({
     name,
     description,
@@ -44,6 +69,7 @@ exports.createProduct = catchAsyncErrors(async (req, res, next) => {
     seller,
     productType,
     images: productImagesLink,
+    discount: discountObj,
   });
 
   res.status(201).json({
@@ -56,10 +82,16 @@ exports.createProduct = catchAsyncErrors(async (req, res, next) => {
 // getting all products by normal users
 exports.getAllProducts = catchAsyncErrors(async (req, res, next) => {
   if (req.query && Object.keys(req.query).length > 0) {
-    const productPerPage = 5;
+    const productPerPage = 1;
     let features = new Features(Product, req.query);
-    features = features.search().filter().pagination(productPerPage);
+    if (req.query.key) {
+      await features.search();
+    } else {
+      await features.filter();
+    }
+    await features.pagination(productPerPage);
     const filteredProducts = await features.query;
+    // const filteredProductsCount = filteredProducts.length;
     const filteredProductsCount = await Product.countDocuments(
       features.query._conditions
     );
@@ -72,7 +104,16 @@ exports.getAllProducts = catchAsyncErrors(async (req, res, next) => {
       totalPages,
     });
   } else {
-    const products = await Product.find();
+    const products = await Product.aggregate([
+      {
+        $lookup: {
+          from: "productreviews",
+          localField: "_id",
+          foreignField: "productId",
+          as: "productReviews",
+        },
+      },
+    ]);
     res.status(200).json({
       success: true,
       products,
@@ -82,7 +123,17 @@ exports.getAllProducts = catchAsyncErrors(async (req, res, next) => {
 
 // getting all products by admin
 exports.getAllProductsByAdmin = catchAsyncErrors(async (req, res, next) => {
-  const products = await Product.find();
+  const products = await Product.aggregate([
+    {
+      $lookup: {
+        from: "productreviews",
+        localField: "_id",
+        foreignField: "productId",
+        as: "productReviews",
+      },
+    },
+  ]);
+
   res.status(200).json({
     success: true,
     products,
@@ -91,7 +142,7 @@ exports.getAllProductsByAdmin = catchAsyncErrors(async (req, res, next) => {
 
 // getting single products
 exports.getSingleProduct = catchAsyncErrors(async (req, res, next) => {
-  const product = await Product.findById(req.params.id);
+  const product = await Product.findById(req.params.productId);
   if (!product) {
     return next(new ErrorHandler("Product not found", 404));
   }
@@ -104,7 +155,7 @@ exports.getSingleProduct = catchAsyncErrors(async (req, res, next) => {
 
 // updating the product
 exports.updateProduct = catchAsyncErrors(async (req, res, next) => {
-  let product = await Product.findById(req.params.id);
+  let product = await Product.findById(req.params.productId);
 
   if (!product) {
     return next(new ErrorHandler("Product not found", 404));
@@ -159,5 +210,33 @@ exports.deleteProduct = catchAsyncErrors(async (req, res, next) => {
   res.status(200).json({
     success: true,
     message: "Product deleted !!!",
+  });
+});
+// add reviews to product
+exports.addProductReview = catchAsyncErrors(async (req, res, next) => {
+  const { productId, ratings, reviewMessage } = req.body;
+
+  if (!ratings || !reviewMessage) return next(new ErrorHandler("", 400));
+
+  const prodReview = await ProductReview.create({
+    reviewerId: req.user._id,
+    productId,
+    ratings,
+    reviewMessage,
+  });
+
+  res.status(201).json({
+    success: true,
+    message: "review added to product",
+    prodReview,
+  });
+});
+// get all reviews
+exports.getProductsReview = catchAsyncErrors(async (req, res, next) => {
+  const allReviews = await ProductReview.find();
+
+  res.status(201).json({
+    success: true,
+    allReviews,
   });
 });

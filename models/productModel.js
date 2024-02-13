@@ -43,15 +43,21 @@ const productSchema = new mongoose.Schema(
       type: String,
       required: [true, "Please enter product seller"],
     },
-    productReviews: [
+    reviews: [
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: "ProductReview",
       },
     ],
-    productDiscountId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "ProductDiscount",
+    discount: {
+      percent: {
+        type: Number,
+        min: [0, "Discount value cannot be negative"],
+        max: [100, "Discount value cannot exceed 100%"],
+      },
+      active: { type: Boolean, default: false },
+      start: Date,
+      end: Date,
     },
     productType: {
       type: String,
