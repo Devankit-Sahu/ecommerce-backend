@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
 
 const productSchema = new mongoose.Schema(
   {
@@ -8,9 +8,9 @@ const productSchema = new mongoose.Schema(
       trim: true,
       maxLength: [70, "product name cannot exceed 70 characters"],
     },
-    categoryId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Category",
+    category: {
+      type: String,
+      required: true,
     },
     description: {
       type: String,
@@ -43,22 +43,17 @@ const productSchema = new mongoose.Schema(
       type: String,
       required: [true, "Please enter product seller"],
     },
-    reviews: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "ProductReview",
-      },
-    ],
-    discount: {
-      percent: {
-        type: Number,
-        min: [0, "Discount value cannot be negative"],
-        max: [100, "Discount value cannot exceed 100%"],
-      },
-      active: { type: Boolean, default: false },
-      start: Date,
-      end: Date,
-    },
+    // discount: {
+    //   percent: {
+    //     type: Number,
+    //     default: 0,
+    //     min: [0, "Discount value cannot be negative"],
+    //     max: [100, "Discount value cannot exceed 100%"],
+    //   },
+    //   active: { type: Boolean, default: false },
+    //   start: { type: Date, default: null },
+    //   end: { type: Date, default: null },
+    // },
     productType: {
       type: String,
       enum: ["Top Deals", "Featured Products"],
@@ -68,4 +63,4 @@ const productSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-module.exports = mongoose.model("Product", productSchema);
+export const Product = mongoose.model("Product", productSchema);

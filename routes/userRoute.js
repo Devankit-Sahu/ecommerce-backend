@@ -1,36 +1,30 @@
-const express = require("express");
-const {
-  registerUser,
+import express from "express";
+const router = express.Router();
+import { authorizeRoles, verifyToken } from "../middleware/authMiddleware.js";
+import upload from "../middleware/multerMiddleware.js";
+import {
+  getAllUsersByAdmin,
+  getUserDetails,
   loginUser,
   logoutUser,
-  getUserDetails,
-  updateUserDetails,
   refreshAccessToken,
-  getAllUsersByAdmin,
-  getUserDetailsByAdmin,
+  registerUser,
   updatePassword,
-} = require("../controllers/userController");
-const { verifyToken, authorizeRoles } = require("../middleware/authMiddleware");
-const upload = require("../middleware/multerMiddleware");
-
-const router = express.Router();
+  updateUserDetails,
+} from "../controllers/userController.js";
 
 router.route("/register").post(upload.single("avatar"), registerUser);
 router.route("/login").post(loginUser);
 router.route("/logout").get(logoutUser);
 // Normal user
 router.route("/me").get(verifyToken, getUserDetails);
-router.route("/me/update").put(verifyToken, updateUserDetails);
-router.route("/me/change-password").put(verifyToken, updatePassword);
+router.route("/update").put(verifyToken, updateUserDetails);
+router.route("/change-password").put(verifyToken, updatePassword);
 // refreshaccesstoken route
-router.route("/refresh").post(refreshAccessToken);
+router.route("/refresh").post(verifyToken, refreshAccessToken);
 // Admin route
 router
-  .route("/admin/users")
+  .route("/admin/all")
   .get(verifyToken, authorizeRoles("admin"), getAllUsersByAdmin);
-// Admin route
-router
-  .route("/admin/user/:id")
-  .get(verifyToken, authorizeRoles("admin"), getUserDetailsByAdmin);
 
-module.exports = router;
+export default router;

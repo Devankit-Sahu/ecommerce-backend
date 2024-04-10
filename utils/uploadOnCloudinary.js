@@ -1,5 +1,5 @@
-const cloudinary = require("cloudinary");
-const fs = require("fs");
+import cloudinary from "cloudinary";
+import fs from "fs";
 
 const uploadOnCloudinary = async (filePath) => {
   try {
@@ -18,4 +18,4 @@ const uploadOnCloudinary = async (filePath) => {
   }
 };
 
-module.exports = uploadOnCloudinary;
+export default uploadOnCloudinary;

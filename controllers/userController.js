@@ -1,15 +1,13 @@
-const User = require("../models/userModel");
-const ErrorHandler = require("../utils/errorhandler");
-const catchAsyncErrors = require("../middleware/catchAsyncErrors");
-const cloudinary = require("cloudinary");
-const jwt = require("jsonwebtoken");
-const uploadOnCloudinary = require("../utils/uploadOnCloudinary");
+import catchAsyncErrors from "../middleware/catchAsyncErrors.js";
+import ErrorHandler from "../utils/errorhandler.js";
+import { User } from "../models/userModel.js";
+import cloudinary from "cloudinary";
+import jwt from "jsonwebtoken";
+import uploadOnCloudinary from "../utils/uploadOnCloudinary.js";
 
-// user register controller
-exports.registerUser = catchAsyncErrors(async (req, res, next) => {
-  const { name, email, password, phoneNumber } = req.body;
-
-  const avatar = req.file;
+// register controller
+export const registerUser = catchAsyncErrors(async (req, res, next) => {
+  const { name, email, password } = req.body;
 
   if (!name || !email || !password)
     return next(new ErrorHandler("Please enter name, email and password", 401));
@@ -20,72 +18,92 @@ exports.registerUser = catchAsyncErrors(async (req, res, next) => {
     return next(new ErrorHandler("Email already is in use!", 401));
   }
 
-  let avatarObj = {};
+  const avatar = req.file;
+  let user;
 
   if (avatar) {
     const response = await uploadOnCloudinary(avatar.path);
-    avatarObj.public_id = response.public_id;
-    avatarObj.url = response.secure_url;
+    user = await User.create({
+      name,
+      email,
+      password,
+      avatar: {
+        public_id: response.public_id,
+        url: response.secure_url,
+      },
+    });
+  } else {
+    user = await User.create({
+      name,
+      email,
+      password,
+    });
   }
 
-  const user = await User.create({
-    name,
-    email,
-    password,
-    avatar: avatarObj,
-    phoneNumber,
-  });
+  const accessToken = user.getAccessToken();
+  const refeshToken = user.getRefreshToken();
 
-  res.status(201).json({
-    success: true,
-    message: "Account created successfully",
-    user,
-  });
+  res
+    .cookie("accessToken", accessToken, {
+      maxAge: 24 * 60 * 60 * 1000,
+      httpOnly: true,
+      secure: true,
+    })
+    .cookie("refreshToken", refeshToken, {
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+      httpOnly: true,
+      secure: true,
+    })
+    .status(201)
+    .json({
+      success: true,
+      message: "Account created successfully",
+    });
 });
-// user login controller
-exports.loginUser = catchAsyncErrors(async (req, res, next) => {
+// login controller
+export const loginUser = catchAsyncErrors(async (req, res, next) => {
   const { email, password } = req.body;
 
   if (!email || !password) {
     return next(new ErrorHandler("Please provide email and password", 400));
   }
 
-  const isUserExist = await User.findOne({ email }).select("+password");
+  const user = await User.findOne({ email }).select("+password");
 
-  if (!isUserExist) {
+  if (!user) {
     return next(new ErrorHandler("User not found", 401));
   }
 
-  const isPasswordMatch = await isUserExist.matchPassword(password);
+  const isPasswordMatch = await user.matchPassword(password);
 
   if (!isPasswordMatch) {
     return next(new ErrorHandler("Invalid credentials", 401));
   }
 
-  const accessToken = isUserExist.getAccessToken();
-  const refeshToken = isUserExist.getRefreshToken();
+  const accessToken = user.getAccessToken();
+  const refeshToken = user.getRefreshToken();
 
   res
-    .status(200)
     .cookie("accessToken", accessToken, {
       maxAge: 24 * 60 * 60 * 1000,
       httpOnly: true,
-      // secure: true,
+      secure: true,
     })
     .cookie("refreshToken", refeshToken, {
       maxAge: 7 * 24 * 60 * 60 * 1000,
       httpOnly: true,
-      // secure: true,
+      secure: true,
     })
+    .status(200)
     .json({
       success: true,
       message: "Logged in successfully",
     });
 });
-// user logout controller
-exports.logoutUser = catchAsyncErrors(async (req, res, next) => {
-  res.clearCookie("accessToken", { httpOnly: true });
-  res.clearCookie("refreshToken", { httpOnly: true });
+// logout controller
+export const logoutUser = catchAsyncErrors(async (req, res, next) => {
+  res.clearCookie("accessToken", { httpOnly: true, secure: true });
+  res.clearCookie("refreshToken", { httpOnly: true, secure: true });
 
   res.status(200).json({
     success: true,
@@ -93,8 +111,9 @@ exports.logoutUser = catchAsyncErrors(async (req, res, next) => {
   });
 });
 // generating new access token
-exports.refreshAccessToken = catchAsyncErrors(async (req, res, next) => {
+export const refreshAccessToken = catchAsyncErrors(async (req, res, next) => {
   const token = req.cookies.refreshToken;
+
   if (!token) {
     return next(new ErrorHandler("Invalid token", 403));
   }
@@ -112,7 +131,6 @@ exports.refreshAccessToken = catchAsyncErrors(async (req, res, next) => {
           maxAge: 24 * 60 * 60 * 1000,
           httpOnly: true,
           secure: true,
-          // sameSite: "Strict",
         })
         .json({
           success: true,
@@ -121,9 +139,9 @@ exports.refreshAccessToken = catchAsyncErrors(async (req, res, next) => {
     })
   );
 });
-// get current user controller
-exports.getUserDetails = catchAsyncErrors(async (req, res, next) => {
-  const user = await User.findById(req.user.id);
+// logged in user controller
+export const getUserDetails = catchAsyncErrors(async (req, res, next) => {
+  const user = await User.findById(req.user);
 
   res.status(200).json({
     success: true,
@@ -131,7 +149,7 @@ exports.getUserDetails = catchAsyncErrors(async (req, res, next) => {
   });
 });
 // update user controller
-exports.updateUserDetails = catchAsyncErrors(async (req, res, next) => {
+export const updateUserDetails = catchAsyncErrors(async (req, res, next) => {
   const { name, email, avatar, phoneNumber } = req.body;
   const userdata = {};
 
@@ -181,7 +199,7 @@ exports.updateUserDetails = catchAsyncErrors(async (req, res, next) => {
   });
 });
 // update password
-exports.updatePassword = catchAsyncErrors(async (req, res, next) => {
+export const updatePassword = catchAsyncErrors(async (req, res, next) => {
   const { oldPassword, newPassword } = req.body;
 
   if (!oldPassword || !newPassword)
@@ -211,41 +229,14 @@ exports.updatePassword = catchAsyncErrors(async (req, res, next) => {
     message: "password changed successfully",
   });
 });
-// get all user controller (admin)
-exports.getAllUsersByAdmin = catchAsyncErrors(async (req, res, next) => {
+
+// admin routes
+// get all user controller
+export const getAllUsersByAdmin = catchAsyncErrors(async (req, res, next) => {
   const users = await User.find();
 
   res.status(200).json({
     success: true,
     users,
-  });
-});
-// get users details controller (admin)
-exports.getUserDetailsByAdmin = catchAsyncErrors(async (req, res, next) => {
-  const user = await User.findById(req.params.id);
-
-  if (!user) {
-    return next(
-      new ErrorHandler(`User does not exit with id:${req.params.id}`)
-    );
-  }
-
-  res.status(200).json({
-    success: true,
-    user,
-  });
-});
-// delete user controller (admin)
-exports.deleteUserByAdmin = catchAsyncErrors(async (req, res, next) => {
-  const user = await User.findById(req.params.id);
-  if (!user) {
-    return next(
-      new ErrorHandler(`User does not  exit with id:${req.params.id}`, 404)
-    );
-  }
-  await User.deleteOne({ _id: req.params.id });
-  res.status(200).json({
-    success: true,
-    message: "User deleted!!!!!!!!!!",
   });
 });

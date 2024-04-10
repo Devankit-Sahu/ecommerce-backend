@@ -1,21 +1,23 @@
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
 
 const productReviewSchema = new mongoose.Schema(
   {
-    reviewerId: {
+    userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
+      required: true,
     },
     productId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Product",
+      required: true,
     },
     ratings: {
       type: Number,
-      required: true,
+      default: 0,
       min: [0, "ratings cannot be negative"],
     },
-    reviewMessage: {
+    message: {
       type: String,
       required: true,
     },
@@ -23,4 +25,7 @@ const productReviewSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-module.exports = mongoose.model("ProductReview", productReviewSchema);
+export const ProductReview = mongoose.model(
+  "ProductReview",
+  productReviewSchema
+);

@@ -1,55 +1,75 @@
-const ErrorHandler = require("../utils/errorhandler");
-const catchAsyncErrors = require("../middleware/catchAsyncErrors");
-const Order = require("../models/orderModel");
+import catchAsyncErrors from "../middleware/catchAsyncErrors.js";
+import ErrorHandler from "../utils/errorhandler.js";
+import { Order } from "../models/orderModel.js";
 
-exports.newOrder = catchAsyncErrors(async (req, res, next) => {
-  const {
-    shippingInfo,
-    orderItems,
-    paymentInfo,
-    itemsPrice,
-    taxPrice,
-    shippingPrice,
-    totalPrice,
-  } = req.body;
+export const newOrder = catchAsyncErrors(async (req, res, next) => {
+  const { orderItems, shippingInfo, shippingCharges, totalPrice } = req.body;
+
+  if (!orderItems.length)
+    return next(new ErrorHandler("add atleast one item in cart to buy", 401));
+
+  if (!shippingInfo)
+    return next(new ErrorHandler("provide shipping info", 401));
+
+  if (!totalPrice) return next(new ErrorHandler("provide totalPrice", 401));
 
   const order = await Order.create({
-    shippingInfo,
     orderItems,
-    paymentInfo,
-    itemsPrice,
-    taxPrice,
-    shippingPrice,
+    userId: req.user,
+    shippingInfo,
+    shippingCharges,
     totalPrice,
-    paidAt: Date.now(),
-    user: req.user._id,
   });
 
   res.status(201).json({
     success: true,
+    message: "order created",
     order,
   });
 });
 
-// getting all orders
-exports.getAllOrders = catchAsyncErrors(async (req, res, next) => {
+export const myOrders = catchAsyncErrors(async (req, res, next) => {
+  const orders = await Order.find({ userId: req.user });
+
+  res.status(200).json({
+    success: true,
+    orders,
+  });
+});
+
+export const getSingleOrder = catchAsyncErrors(async (req, res, next) => {
+  const { orderId } = req.params;
+
+  if (!orderId) return next(new ErrorHandler("Order id is missing", 404));
+
+  const order = await Order.findById(orderId);
+
+  if (!order) {
+    return next(new ErrorHandler("Order not found", 404));
+  }
+
+  res.status(200).json({
+    success: true,
+    order,
+  });
+});
+
+// admin routes
+export const allOrdersByAdmin = catchAsyncErrors(async (req, res, next) => {
   const orders = await Order.find();
 
-  if (!orders) {
-    return next(new ErrorHandler("No orders found", 404));
-  }
-
   res.status(200).json({
     success: true,
     orders,
   });
 });
 
-exports.getSingleOrder = catchAsyncErrors(async (req, res, next) => {
-  const order = await Order.findById(req.params.id).populate(
-    "user",
-    "name email"
-  );
+export const orderDetailsByAdmin = catchAsyncErrors(async (req, res, next) => {
+  const { orderId } = req.params;
+
+  if (!orderId) return next(new ErrorHandler("Order id is missing", 404));
+
+  let order = await Order.findById(orderId);
 
   if (!order) {
     return next(new ErrorHandler("Order not found", 404));
@@ -61,34 +81,32 @@ exports.getSingleOrder = catchAsyncErrors(async (req, res, next) => {
   });
 });
 
-exports.myOrders = catchAsyncErrors(async (req, res, next) => {
-  const orders = await Order.find({ user: req.user._id });
+export const updateOrderStatusByAdmin = catchAsyncErrors(
+  async (req, res, next) => {
+    const { orderId } = req.params;
+    const { status } = req.body;
 
-  if (!orders) {
-    return next(new ErrorHandler("Order not found", 404));
+    if (!orderId) return next(new ErrorHandler("Order id is missing", 404));
+
+    let order = await Order.findById(orderId);
+
+    if (!order) {
+      return next(new ErrorHandler("Order not found", 404));
+    }
+
+    const updatedOrder = await Order.findByIdAndUpdate(
+      orderId,
+      { status },
+      {
+        new: true,
+        runValidators: true,
+        useFindAndModify: false,
+      }
+    );
+
+    res.status(200).json({
+      success: true,
+      updatedOrder,
+    });
   }
-
-  res.status(200).json({
-    success: true,
-    orders,
-  });
-});
-
-exports.updateOrder = catchAsyncErrors(async (req, res, next) => {
-  let order = await Order.findById(req.params.id);
-
-  if (!order) {
-    return next(new ErrorHandler("Order not found", 404));
-  }
-
-  order = await Order.findByIdAndUpdate(req.params.id, req.body, {
-    new: true,
-    runValidators: true,
-    useFindAndModify: false,
-  });
-
-  res.status(200).json({
-    success: true,
-    order,
-  });
-});
+);

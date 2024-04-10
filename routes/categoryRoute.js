@@ -1,20 +1,23 @@
-const express = require("express");
-const { verifyToken, authorizeRoles } = require("../middleware/authMiddleware");
-const {
-  addCategory,
-  getAllCategories,
-  deleteCategory,
-} = require("../controllers/categoryController");
-
+import express from "express";
 const router = express.Router();
-//for normal users
-router.route("/all-categories").get(getAllCategories);
-//routes for admin
+import { authorizeRoles, verifyToken } from "../middleware/authMiddleware.js";
+import {
+  getAllCategoriesByAdmin,
+  addCategoryByAdmin,
+  deleteCategoryByAdmin,
+  getAllCategories,
+} from "../controllers/categoryController.js";
+
+router.route("/all").get(getAllCategories);
+//admin routes
 router
-  .route("/admin/category/new")
-  .post(verifyToken, authorizeRoles("admin"), addCategory);
-router.route("/admin/all-categories").get(getAllCategories);
+  .route("/admin/new")
+  .post(verifyToken, authorizeRoles(["admin"]), addCategoryByAdmin);
 router
-  .route("/admin/delete-category/?:categoryId")
-  .delete(verifyToken, authorizeRoles("admin"), deleteCategory);
-module.exports = router;
+  .route("/admin/all")
+  .get(verifyToken, authorizeRoles(["admin"]), getAllCategoriesByAdmin);
+router
+  .route("/admin/:categoryId")
+  .delete(verifyToken, authorizeRoles(["admin"]), deleteCategoryByAdmin);
+
+export default router;

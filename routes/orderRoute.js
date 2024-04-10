@@ -1,19 +1,25 @@
-const express = require("express");
-const{ newOrder, getSingleOrder, getAllOrders, updateOrder, myOrders } = require("../controllers/orderController");
-const { verifyToken, authorizeRoles } = require("../middleware/authMiddleware");
-
+import express from "express";
 const router = express.Router();
+import { authorizeRoles, verifyToken } from "../middleware/authMiddleware.js";
+import {
+  newOrder,
+  myOrders,
+  getSingleOrder,
+  allOrdersByAdmin,
+  orderDetailsByAdmin,
+  updateOrderStatusByAdmin,
+} from "../controllers/orderController.js";
 
-router.route("/order/new").post(verifyToken, authorizeRoles("admin"), newOrder);
+router.route("/new").post(verifyToken, newOrder);
+router.route("/my").get(verifyToken, myOrders);
+router.route("/:orderId").get(verifyToken, getSingleOrder);
+// admin routes
 router
-  .route("/all-orders")
-  .get(verifyToken, authorizeRoles("admin"), getAllOrders);
+  .route("/admin/all")
+  .get(verifyToken, authorizeRoles(["admin"]), allOrdersByAdmin);
 router
-  .route("/order/:id")
-  .get(verifyToken, authorizeRoles("admin"), getSingleOrder);
-router
-  .route("/update/:id")
-  .put(verifyToken, authorizeRoles("admin"), updateOrder);
-router.route("/my-orders").get(verifyToken, myOrders);
+  .route("/admin/:orderId")
+  .get(verifyToken, authorizeRoles(["admin"]), orderDetailsByAdmin)
+  .put(verifyToken, authorizeRoles(["admin"]), updateOrderStatusByAdmin);
 
-module.exports = router;
+export default router;

@@ -1,51 +1,44 @@
-const express = require("express");
-const {
-  getAllProducts,
-  createProduct,
-  updateProduct,
-  deleteProduct,
-  getSingleProduct,
-  getAllProductsByAdmin,
-  addProductReview,
-  addProductDiscount,
-  getAllDiscount,
-  getProductsReview,
-} = require("../controllers/productContoller");
-const { verifyToken, authorizeRoles } = require("../middleware/authMiddleware");
-const upload = require("../middleware/multerMiddleware");
-
+import express from "express";
 const router = express.Router();
+import { authorizeRoles, verifyToken } from "../middleware/authMiddleware.js";
+import upload from "../middleware/multerMiddleware.js";
+import {
+  addProductReview,
+  createProductByAdmin,
+  deleteProductByAdmin,
+  getAllProducts,
+  getAllProductsByAdmin,
+  getSingleProduct,
+  getSingleProductByAdmin,
+  updateProductByAdmin,
+} from "../controllers/productContoller.js";
+
 // normal user routes
-router.route("/products").get(getAllProducts);
-router.route("/product/:productId").get(getSingleProduct);
+router.route("/all").get(getAllProducts);
+router.route("/:productId").get(getSingleProduct);
+router.route("/reviews/add").post(verifyToken, addProductReview);
+
 // admin routes
 router
-  .route("/admin/products")
-  .get(verifyToken, authorizeRoles("admin"), getAllProductsByAdmin);
-router
-  .route("/admin/product/new")
+  .route("/admin/new")
   .post(
     verifyToken,
-    authorizeRoles("admin"),
+    authorizeRoles(["admin", "user"]),
     upload.array("images", 8),
-    createProduct
+    createProductByAdmin
   );
 router
-  .route("/admin/product/:productId")
+  .route("/admin/all")
+  .get(verifyToken, authorizeRoles(["admin", "user"]), getAllProductsByAdmin);
+router
+  .route("/admin/:productId")
   .put(
     verifyToken,
-    authorizeRoles("admin"),
+    authorizeRoles(["admin"]),
     upload.array("images", 8),
-    updateProduct
+    updateProductByAdmin
   )
-  .delete(verifyToken, authorizeRoles("admin"), deleteProduct)
-  .get(verifyToken, authorizeRoles("admin"), getSingleProduct);
+  .get(verifyToken, authorizeRoles(["admin", "user"]), getSingleProductByAdmin)
+  .delete(verifyToken, authorizeRoles(["admin", "user"]), deleteProductByAdmin);
 
-router
-  .route("/admin/product/reviews/add")
-  .post(verifyToken, authorizeRoles("admin"), addProductReview);
-router
-  .route("/admin/product/reviews/all")
-  .post(verifyToken, authorizeRoles("admin"), getProductsReview);
-
-module.exports = router;
+export default router;
