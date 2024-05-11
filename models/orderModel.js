@@ -45,8 +45,8 @@ const orderSchema = new mongoose.Schema(
         required: [true, "Please enter your country"],
       },
       pincode: {
-        type: Number,
-        required: true,
+        type: String,
+        required: [true, "Please enter your country"],
       },
     },
     userId: {
@@ -64,12 +64,12 @@ const orderSchema = new mongoose.Schema(
     },
     orderStatus: {
       type: String,
-      enum: ["Processing", "Processed", "Delivered"],
-      default: "Processing",
+      enum: ["processing", "shipped", "delivered"],
+      default: "processing",
     },
     deliveredAt: {
       type: Date,
-      default: null,
+      default: Date(),
     },
   },
   { timestamps: true }
