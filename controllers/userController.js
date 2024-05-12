@@ -48,11 +48,13 @@ export const registerUser = catchAsyncErrors(async (req, res, next) => {
       maxAge: 24 * 60 * 60 * 1000,
       httpOnly: true,
       secure: true,
+      sameSite: "None",
     })
     .cookie("refreshToken", refeshToken, {
       maxAge: 7 * 24 * 60 * 60 * 1000,
       httpOnly: true,
       secure: true,
+      sameSite: "None",
     })
     .status(201)
     .json({
@@ -88,11 +90,13 @@ export const loginUser = catchAsyncErrors(async (req, res, next) => {
       maxAge: 24 * 60 * 60 * 1000,
       httpOnly: true,
       secure: true,
+      sameSite: "None",
     })
     .cookie("refreshToken", refeshToken, {
       maxAge: 7 * 24 * 60 * 60 * 1000,
       httpOnly: true,
       secure: true,
+      sameSite: "None",
     })
     .status(200)
     .json({
