@@ -2,10 +2,10 @@ import catchAsyncErrors from "../middleware/catchAsyncErrors.js";
 import ErrorHandler from "../utils/errorhandler.js";
 import { Product } from "../models/productModel.js";
 import { ProductReview } from "../models/productReviewModel.js";
-import mongoose from "mongoose";
 import uploadOnCloudinary from "../utils/uploadOnCloudinary.js";
 import Features from "../utils/features.js";
 import cloudinary from "cloudinary";
+import mongoose from "mongoose";
 
 // getting all products
 export const getAllProducts = catchAsyncErrors(async (req, res, next) => {
@@ -47,65 +47,40 @@ export const getSingleProduct = catchAsyncErrors(async (req, res, next) => {
   }
 
   const product = await Product.findById(productId);
-  // const product = await Product.aggregate([
-  // {
-  //   $match: { _id: new mongoose.Types.ObjectId(productId) },
-  // },
-  // {
-  //   $lookup: {
-  //     from: "productreviews",
-  //     localField: "_id",
-  //     foreignField: "productId",
-  //     as: "reviews",
-  //   },
-  // },
-  // {
-  //   $unwind: "$reviews",
-  // },
-  // {
-  //   $lookup: {
-  //     from: "users",
-  //     let: { userId: "$reviews.userId" },
-  //     pipeline: [
-  //       {
-  //         $match: {
-  //           $expr: {
-  //             $eq: ["$_id", "$$userId"],
-  //           },
-  //         },
-  //       },
-  //       {
-  //         $project: {
-  //           _id: 0,
-  //           name: 1,
-  //           avatar: 1,
-  //         },
-  //       },
-  //     ],
-  //     as: "userDetails",
-  //   },
-  // },
-  // {
-  //   $addFields: {
-  //     "reviews.userDetails": { $arrayElemAt: ["$userDetails", 0] },
-  //   },
-  // },
-  // {
-  //   $group: {
-  //     _id: "$_id",
-  //     name: { $first: "$name" },
-  //     reviews: { $push: "$reviews" },
-  //   },
-  // },
-  // ]);
 
   if (!product) {
     return next(new ErrorHandler("Product not found", 404));
   }
 
+  const reviews = await ProductReview.aggregate([
+    { $match: { productId: new mongoose.Types.ObjectId(productId) } },
+    {
+      $lookup: {
+        from: "users",
+        localField: "userId",
+        foreignField: "_id",
+        as: "user",
+      },
+    },
+    { $unwind: "$user" },
+    {
+      $project: {
+        ratings: 1,
+        message: 1,
+        createdAt: 1,
+        user: {
+          _id: 1,
+          name: 1,
+          avatar: 1,
+        },
+      },
+    },
+  ]);
+
   res.status(200).json({
     success: true,
     product,
+    reviews,
   });
 });
 // add reviews to product

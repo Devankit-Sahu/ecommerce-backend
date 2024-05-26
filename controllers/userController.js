@@ -59,6 +59,7 @@ export const registerUser = catchAsyncErrors(async (req, res, next) => {
     .status(201)
     .json({
       success: true,
+      user,
       message: "Account created successfully",
     });
 });
@@ -101,13 +102,22 @@ export const loginUser = catchAsyncErrors(async (req, res, next) => {
     .status(200)
     .json({
       success: true,
+      user,
       message: "Logged in successfully",
     });
 });
 // logout controller
 export const logoutUser = catchAsyncErrors(async (req, res, next) => {
-  res.clearCookie("accessToken", { httpOnly: true, secure: true });
-  res.clearCookie("refreshToken", { httpOnly: true, secure: true });
+  res.clearCookie("accessToken", {
+    httpOnly: true,
+    secure: true,
+    sameSite: "None",
+  });
+  res.clearCookie("refreshToken", {
+    httpOnly: true,
+    secure: true,
+    sameSite: "None",
+  });
 
   res.status(200).json({
     success: true,
@@ -237,7 +247,11 @@ export const updatePassword = catchAsyncErrors(async (req, res, next) => {
 // admin routes
 // get all user controller
 export const getAllUsersByAdmin = catchAsyncErrors(async (req, res, next) => {
-  const users = await User.find();
+  const users = await User.find({
+    role: {
+      $ne: "admin",
+    },
+  });
 
   res.status(200).json({
     success: true,
