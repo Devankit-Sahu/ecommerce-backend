@@ -54,6 +54,25 @@ export const getSingleOrder = catchAsyncErrors(async (req, res, next) => {
   });
 });
 
+export const deleteOrder = catchAsyncErrors(async (req, res, next) => {
+  const { orderId } = req.params;
+
+  if (!orderId) return next(new ErrorHandler("Order id is missing", 404));
+
+  const order = await Order.findById(orderId);
+
+  if (!order) {
+    return next(new ErrorHandler("Order not found", 404));
+  }
+
+  await order.deleteOne();
+
+  res.status(200).json({
+    success: true,
+    message: "Order deleted successfully!!!",
+  });
+});
+
 // admin routes
 export const allOrdersByAdmin = catchAsyncErrors(async (req, res, next) => {
   const orders = await Order.find();
@@ -84,9 +103,13 @@ export const orderDetailsByAdmin = catchAsyncErrors(async (req, res, next) => {
 export const updateOrderStatusByAdmin = catchAsyncErrors(
   async (req, res, next) => {
     const { orderId } = req.params;
-    const { status } = req.body;
+    const { orderStatus, deliveredAt } = req.body;
 
     if (!orderId) return next(new ErrorHandler("Order id is missing", 404));
+    if (!orderStatus)
+      return next(new ErrorHandler("OrderStatus is missing", 404));
+    if (!deliveredAt)
+      return next(new ErrorHandler("Delivery date is missing", 404));
 
     let order = await Order.findById(orderId);
 
@@ -94,19 +117,13 @@ export const updateOrderStatusByAdmin = catchAsyncErrors(
       return next(new ErrorHandler("Order not found", 404));
     }
 
-    const updatedOrder = await Order.findByIdAndUpdate(
-      orderId,
-      { status },
-      {
-        new: true,
-        runValidators: true,
-        useFindAndModify: false,
-      }
-    );
+    order.orderStatus = orderStatus;
+    order.deliveredAt = new Date(deliveredAt);
+    await order.save();
 
     res.status(200).json({
       success: true,
-      updatedOrder,
+      message: "Order is updated",
     });
   }
 );

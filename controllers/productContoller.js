@@ -77,10 +77,19 @@ export const getSingleProduct = catchAsyncErrors(async (req, res, next) => {
     },
   ]);
 
+  const totalRatings = reviews.reduce(
+    (total, review) => total + review.ratings,
+    0
+  );
+  const totalRatingsDecimal =
+    reviews.length > 0 ? (totalRatings / reviews.length).toFixed(1) : 0.0;
+
   res.status(200).json({
     success: true,
     product,
     reviews,
+    totalRatings,
+    totalRatingsDecimal,
   });
 });
 // add reviews to product

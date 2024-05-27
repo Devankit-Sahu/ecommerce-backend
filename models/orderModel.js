@@ -69,10 +69,16 @@ const orderSchema = new mongoose.Schema(
     },
     deliveredAt: {
       type: Date,
-      default: Date(),
     },
   },
   { timestamps: true }
 );
+
+orderSchema.pre("save", function (next) {
+  if (!this.deliveredAt) {
+    this.deliveredAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  }
+  next();
+});
 
 export const Order = mongoose.model("Order", orderSchema);
