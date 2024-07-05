@@ -18,6 +18,7 @@ export const createPayment = catchAsyncErrors(async (req, res, next) => {
   const payment = await stripe.paymentIntents.create({
     amount: Number(amount) * 100,
     currency: "inr",
+    description: "testing purpose",
   });
 
   res.status(201).json({

@@ -5,6 +5,7 @@ import upload from "../middleware/multerMiddleware.js";
 import {
   addProductReview,
   createProductByAdmin,
+  dashboardData,
   deleteProductByAdmin,
   getAllProducts,
   getAllProductsByAdmin,
@@ -40,5 +41,8 @@ router
   )
   .get(verifyToken, authorizeRoles(["admin", "user"]), getSingleProductByAdmin)
   .delete(verifyToken, authorizeRoles(["admin", "user"]), deleteProductByAdmin);
+router
+  .route("/admin/dashboard/data")
+  .get(verifyToken, authorizeRoles("admin"), dashboardData);
 
 export default router;
