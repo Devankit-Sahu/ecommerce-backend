@@ -12,6 +12,7 @@ import productRoute from "./routes/productRoute.js";
 import categoryRoute from "./routes/categoryRoute.js";
 import orderRoute from "./routes/orderRoute.js";
 import paymentRoute from "./routes/paymentRoute.js";
+import statsRoute from "./routes/statsRotue.js";
 
 process.on("uncaughtException", (err) => {
   console.log(`Error : ${err.message}`);
@@ -51,6 +52,7 @@ app.use("/api/v1/product", productRoute);
 app.use("/api/v1/category", categoryRoute);
 app.use("/api/v1/order", orderRoute);
 app.use("/api/v1/payment", paymentRoute);
+app.use("/api/v1/stats", statsRoute);
 
 app.use(errormiddleware);
 

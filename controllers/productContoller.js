@@ -1,8 +1,6 @@
 import catchAsyncErrors from "../middleware/catchAsyncErrors.js";
 import ErrorHandler from "../utils/errorhandler.js";
 import { Product } from "../models/productModel.js";
-import { Order } from "../models/orderModel.js";
-import { User } from "../models/userModel.js";
 import { ProductReview } from "../models/productReviewModel.js";
 import uploadOnCloudinary from "../utils/uploadOnCloudinary.js";
 import Features from "../utils/features.js";
@@ -216,23 +214,24 @@ export const updateProductByAdmin = catchAsyncErrors(async (req, res, next) => {
   }
 
   const productImages = req.files || [];
+  const productUpdate = { ...req.body };
 
-  // uplading images to cloudinary
-  const uploadPromises = productImages.map(async (image) => {
-    const result = await uploadOnCloudinary(image.path);
-    return {
-      public_id: result.public_id,
-      url: result.secure_url,
-    };
-  });
-
-  const productImagesObj = await Promise.all(uploadPromises);
-
-  const updatedImages = [...product.images, ...productImagesObj];
+  if (productImages.length > 0) {
+    // uplading images to cloudinary
+    const uploadPromises = productImages.map(async (image) => {
+      const result = await uploadOnCloudinary(image.path);
+      return {
+        public_id: result.public_id,
+        url: result.secure_url,
+      };
+    });
+    const uploadedImages = await Promise.all(uploadPromises);
+    productUpdate.images = [...product.images, ...uploadedImages];
+  }
 
   product = await Product.findByIdAndUpdate(
     productId,
-    { ...req.body, images: updatedImages },
+    { ...productUpdate },
     {
       new: true,
       runValidators: true,
@@ -269,61 +268,5 @@ export const deleteProductByAdmin = catchAsyncErrors(async (req, res, next) => {
   res.status(200).json({
     success: true,
     message: "Product deleted",
-  });
-});
-//admin stats
-export const dashboardData = catchAsyncErrors(async (req, res, next) => {
-  const totalOrders = await Order.find();
-  const totalProducts = await Product.countDocuments();
-  const totalUsers = await User.countDocuments({ role: { $ne: "admin" } });
-  const totalSales = totalOrders.reduce(
-    (acc, curr) => acc + curr.totalPrice,
-    0
-  );
-
-  const today = new Date();
-  const lastSixMonthsAgo = new Date();
-  lastSixMonthsAgo.setMonth(lastSixMonthsAgo.getMonth() - 6);
-
-  const lastSixMonthsOrders = await Order.find({
-    createdAt: {
-      $gte: lastSixMonthsAgo,
-      $lte: today,
-    },
-  });
-
-  const orderMonthCounts = new Array(6).fill(0);
-  const orderMonthyRevenue = new Array(6).fill(0);
-
-  lastSixMonthsOrders.forEach((order) => {
-    const creationDate = order.createdAt;
-    const monthDiff = (today.getMonth() - creationDate.getMonth() + 12) % 12;
-
-    if (monthDiff < 6) {
-      orderMonthCounts[6 - monthDiff - 1] += 1;
-      orderMonthyRevenue[6 - monthDiff - 1] += order.totalPrice;
-    }
-  });
-
-  const lastOneMonth = new Date();
-  lastOneMonth.setMonth(lastOneMonth.getMonth() - 1);
-  const lastOneMonthOrders = await Order.find({
-    createdAt: {
-      $gte: lastOneMonth,
-      $lte: today,
-    },
-  });
-
-  res.status(200).json({
-    success: true,
-    totalSales,
-    totalOrders: totalOrders.length,
-    totalProducts,
-    totalUsers,
-    chart: {
-      order: orderMonthCounts,
-      revenue: orderMonthyRevenue,
-    },
-    lastOneMonthOrders,
   });
 });

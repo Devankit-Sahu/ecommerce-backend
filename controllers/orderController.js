@@ -1,6 +1,7 @@
 import catchAsyncErrors from "../middleware/catchAsyncErrors.js";
 import ErrorHandler from "../utils/errorhandler.js";
 import { Order } from "../models/orderModel.js";
+import { Product } from "../models/productModel.js";
 
 export const newOrder = catchAsyncErrors(async (req, res, next) => {
   const { orderItems, shippingInfo, shippingCharges, totalPrice } = req.body;
@@ -88,7 +89,10 @@ export const orderDetailsByAdmin = catchAsyncErrors(async (req, res, next) => {
 
   if (!orderId) return next(new ErrorHandler("Order id is missing", 404));
 
-  let order = await Order.findById(orderId);
+  let order = await Order.findById(orderId).populate(
+    "userId",
+    "name email -_id"
+  );
 
   if (!order) {
     return next(new ErrorHandler("Order not found", 404));
@@ -117,13 +121,25 @@ export const updateOrderStatusByAdmin = catchAsyncErrors(
       return next(new ErrorHandler("Order not found", 404));
     }
 
+    if (order.orderStatus === "delivered") {
+      return next(new ErrorHandler("Order is already delivered", 400));
+    }
+
     order.orderStatus = orderStatus;
     order.deliveredAt = new Date(deliveredAt);
     await order.save();
 
+    for (let item of order.orderItems) {
+      const product = await Product.findById(item.productId);
+      if (product) {
+        product.stock -= item.quantity;
+        await product.save();
+      }
+    }
+
     res.status(200).json({
       success: true,
-      message: "Order is updated",
+      message: "Order status is updated",
     });
   }
 );
