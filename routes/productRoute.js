@@ -8,6 +8,7 @@ import {
   deleteProductByAdmin,
   getAllProducts,
   getAllProductsByAdmin,
+  getProductsByProductType,
   getSingleProduct,
   getSingleProductByAdmin,
   updateProductByAdmin,
@@ -15,6 +16,7 @@ import {
 
 // normal user routes
 router.route("/all").get(getAllProducts);
+router.route("/type/:productType").get(getProductsByProductType);
 router.route("/:productId").get(getSingleProduct);
 router.route("/reviews/add").post(verifyToken, addProductReview);
 

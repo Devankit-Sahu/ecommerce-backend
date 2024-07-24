@@ -43,21 +43,10 @@ const productSchema = new mongoose.Schema(
       type: String,
       required: [true, "Please enter product seller"],
     },
-    // discount: {
-    //   percent: {
-    //     type: Number,
-    //     default: 0,
-    //     min: [0, "Discount value cannot be negative"],
-    //     max: [100, "Discount value cannot exceed 100%"],
-    //   },
-    //   active: { type: Boolean, default: false },
-    //   start: { type: Date, default: null },
-    //   end: { type: Date, default: null },
-    // },
     productType: {
       type: String,
-      enum: ["Top Deals", "Featured Products"],
-      default: "Top Deals",
+      enum: ["top deals", "featured products"],
+      default: "top deals",
     },
   },
   { timestamps: true }

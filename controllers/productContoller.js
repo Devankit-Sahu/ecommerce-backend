@@ -30,14 +30,20 @@ export const getAllProducts = catchAsyncErrors(async (req, res, next) => {
       productsCount,
       totalPages,
     });
-  } else {
-    const products = await Product.find();
-    res.status(200).json({
-      success: true,
-      products,
-    });
   }
 });
+// getting all products by product type
+export const getProductsByProductType = catchAsyncErrors(
+  async (req, res, next) => {
+    const { productType } = req.params;
+    if (!productType)
+      return next(new ErrorHandler("product type is missing", 400));
+
+    const products = await Product.find({ productType }).limit(8);
+
+    res.status(200).json({ success: true, products });
+  }
+);
 // getting single products
 export const getSingleProduct = catchAsyncErrors(async (req, res, next) => {
   const { productId } = req.params;
