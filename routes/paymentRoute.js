@@ -6,7 +6,7 @@ import {
   sendStripeKey,
 } from "../controllers/paymentController.js";
 
-router.route("/key").get(sendStripeKey);
-router.route("/new").post(createPayment);
+router.route("/key").get(verifyToken, sendStripeKey);
+router.route("/new").post(verifyToken, createPayment);
 
 export default router;

@@ -35,6 +35,14 @@ const userSchema = new mongoose.Schema(
       enum: ["user", "admin"],
       default: "user",
     },
+    shippingInfo: {
+      address1: { type: String, default: null },
+      address2: { type: String, default: null },
+      city: { type: String, default: null },
+      state: { type: String, default: null },
+      country: { type: String, default: null },
+      pincode: { type: String, default: null },
+    },
   },
   { timestamps: true }
 );

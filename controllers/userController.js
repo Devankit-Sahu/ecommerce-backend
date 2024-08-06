@@ -243,6 +243,38 @@ export const updatePassword = catchAsyncErrors(async (req, res, next) => {
     message: "password changed successfully",
   });
 });
+// add shipping info
+export const addShippingInfo = catchAsyncErrors(async (req, res, next) => {
+  const { address1, address2, city, state, country, pincode } = req.body;
+
+  if (!(address1 || address2) || !city || !state || !country || !pincode) {
+    return next(new ErrorHandler("please enter all the fields", 400));
+  }
+
+  const user = await User.findById(req.user);
+
+  if (!user) {
+    return next(
+      new ErrorHandler("logged in or signup to use this service", 401)
+    );
+  }
+
+  user.shippingInfo = {
+    address1,
+    address2,
+    city,
+    state,
+    country,
+    pincode,
+  };
+
+  await user.save({ validateBeforeSave: false });
+
+  res.status(200).json({
+    success: true,
+    message: "shipping info added successfully",
+  });
+});
 
 // admin routes
 // get all user controller

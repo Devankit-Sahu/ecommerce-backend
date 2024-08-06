@@ -10,7 +10,7 @@ import mongoose from "mongoose";
 // getting all products
 export const getAllProducts = catchAsyncErrors(async (req, res, next) => {
   if (req.query && Object.keys(req.query).length > 0) {
-    const productPerPage = 16;
+    const productPerPage = 8;
     let features = new Features(Product, req.query);
     let filteredProducts = [];
     if (req.query.key) {
